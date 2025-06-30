@@ -1,2 +1,6 @@
 # ignore main.go for development (protect any secrets lazy option) 
 main.go 
+
+# debug artifacts
+*.exe
+__debug*
