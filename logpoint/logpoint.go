@@ -91,17 +91,11 @@ func (logpoint *Logpoint) Query(query string, timeRange string, limit int, repos
 func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 	// From the api docs:
 	// Retrieve search result logs based on the search_id. The server sends the search result logs in chunks. You need to continue sending the request with the same parameters until you receive a response where final is equal to TRUE. It indicates that you have received all the search result logs.
-
 	payload := map[string]interface{}{
 		"searchId": searchId,
 	}
+	time.Sleep(500 * time.Millisecond) // add slight delay for Logpoint
 
-	time.Sleep(200 * time.Millisecond) // add slight delay for Logpoint
-	// time.Sleep( * time.Second) // add slight delay for Logpoint
-
-	// TODO: compair logpoint response with this query with and without the delay.
-	// Then use whatever var says search complete to wait until that is done before pulling the data
-	// profit
 	res, err := getSearchLogs[models.SearchRequestResponse](logpoint, payload)
 	if err != nil {
 		return nil, error(err)
@@ -113,8 +107,9 @@ func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 	}
 
 	rows := []interface{}{}
-	finished := res.Final
 
+	/* Ignore pagination at this level
+	finished := res.Final
 	// Logpoints docs are unclear and pagination process is poor. Here we assume if we get 0 total pages then
 	// we have the data we request event though res.Final could be false...
 	if res.TotalPages == 0 {
@@ -126,12 +121,16 @@ func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 
 	// Recursively fetch data
 	attempts := 0
+	// ogQuery := res.
 	for !finished {
 		if attempts > 50 {
 			return nil, fmt.Errorf("Pagination failed; logpoints docs are a bit naff. Possible ticket required.")
 		}
 		rows = append(rows, res.Rows...)
 		res, err = getSearchLogs[models.SearchRequestResponse](logpoint, payload)
+		if !res.Success {
+			return nil, fmt.Errorf("%s", res.Message)
+		}
 		if err != nil {
 			return nil, error(err)
 		}
@@ -140,6 +139,7 @@ func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 		time.Sleep(100 * time.Millisecond) // add slight delay for Logpoint
 		attempts++
 	}
+	*/
 
 	rows = append(rows, res.Rows...)
 
