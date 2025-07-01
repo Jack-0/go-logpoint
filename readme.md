@@ -1,6 +1,6 @@
 # Go Logpoint
 
-A very simple wrapper library for the Logpoint API.
+A very simple wrapper library for the Logpoint API which does not utilise third-party packages.
 
 
 ## Usage
