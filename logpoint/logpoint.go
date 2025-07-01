@@ -73,9 +73,9 @@ func getSearchLogs[T any](logpoint *Logpoint, requestData map[string]interface{}
 }
 
 func (logpoint *Logpoint) Query(query string, timeRange string, limit int, repos []string, timeoutSeconds int) (*models.QueryRequestResponse, error) {
-	// handle timeout
+	// advice the api user on recommended timeout values
 	if timeoutSeconds < 5 || timeoutSeconds > 90 {
-		fmt.Println("Timeout could be problematic try a range within 5-90 seconds")
+		fmt.Println("Timeout could be problematic try a range within 5-90 seconds.")
 	}
 
 	requestData := map[string]interface{}{
@@ -94,55 +94,23 @@ func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 	payload := map[string]interface{}{
 		"searchId": searchId,
 	}
-	time.Sleep(500 * time.Millisecond) // add slight delay for Logpoint
 
-	res, err := getSearchLogs[models.SearchRequestResponse](logpoint, payload)
-	if err != nil {
-		return nil, error(err)
-	}
-	fmt.Printf("RES: complete=%t, totalPages=%d, num_aggregated=%d", res.Complete, res.TotalPages, res.NumAggregated)
-
-	if !res.Success {
-		return nil, fmt.Errorf("%s", res.Message)
-	}
+	finished := false
 
 	rows := []interface{}{}
-
-	/* Ignore pagination at this level
-	finished := res.Final
-	// Logpoints docs are unclear and pagination process is poor. Here we assume if we get 0 total pages then
-	// we have the data we request event though res.Final could be false...
-	if res.TotalPages == 0 {
-		finished = true
-	}
-	// payload := map[string]interface{}{
-	// 	"searchId": res,
-	// }
-
-	// Recursively fetch data
-	attempts := 0
-	// ogQuery := res.
 	for !finished {
-		if attempts > 50 {
-			return nil, fmt.Errorf("Pagination failed; logpoints docs are a bit naff. Possible ticket required.")
-		}
-		rows = append(rows, res.Rows...)
-		res, err = getSearchLogs[models.SearchRequestResponse](logpoint, payload)
-		if !res.Success {
-			return nil, fmt.Errorf("%s", res.Message)
-		}
+		time.Sleep(1 * time.Second) // wait 1 second to give logpoint a fighting chance
+		res, err := getSearchLogs[models.SearchRequestResponse](logpoint, payload)
 		if err != nil {
 			return nil, error(err)
 		}
-		finished = res.Final
-		// time.Sleep(60 * time.Second) // add slight delay for Logpoint
-		time.Sleep(100 * time.Millisecond) // add slight delay for Logpoint
-		attempts++
+		finished = res.Final || res.TotalPages == 0
+		rows = append(rows, res.Rows...)
+
+		if !res.Success && !finished {
+			return nil, fmt.Errorf("%s", res.Message)
+		}
 	}
-	*/
-
-	rows = append(rows, res.Rows...)
-
 	return rows, nil
 }
 
