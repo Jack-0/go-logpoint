@@ -13,28 +13,35 @@ import (
 )
 
 type Logpoint struct {
-	url      string
-	username string
-	secret   string
-	client   *http.Client
+	url        string
+	username   string
+	secret     string
+	client     *http.Client
+	enableLogs bool // rudimentary debug logging
 }
 
-func New(url string, username string, secret string) *Logpoint {
+func New(logpointUrl string, username string, secret string, enableLogs bool) *Logpoint {
 
 	// verify url
-	// strip ending / to avoid issues
+	u, err := url.ParseRequestURI(logpointUrl)
+	if err != nil {
+		panic(err)
+	}
+	// strip any postfixed trailing slash
+	cleanUrl := strings.TrimSuffix(u.String(), "/")
 
 	return &Logpoint{
-		url:      url,
-		client:   &http.Client{},
-		username: username,
-		secret:   secret,
+		url:        cleanUrl,
+		client:     &http.Client{},
+		username:   username,
+		secret:     secret,
+		enableLogs: enableLogs,
 	}
 }
 
 // Helper function to call the getSearchLog endpoint with a json payload (API uses x-www-form-urlencoded)
 func getSearchLogs[T any](logpoint *Logpoint, requestData map[string]interface{}) (*T, error) {
-	fmt.Printf("\nRequest data = %+v\n", requestData)
+	logpoint.LocalDebugLog(fmt.Sprintf("calling /getSearchLogs with request data '%v'", requestData))
 
 	jsonPayload, err := json.Marshal(requestData)
 	if err != nil {
@@ -70,6 +77,12 @@ func getSearchLogs[T any](logpoint *Logpoint, requestData map[string]interface{}
 		return nil, error(err)
 	}
 	return &response, nil
+}
+
+func (logpoint *Logpoint) LocalDebugLog(msg string) {
+	if logpoint.enableLogs {
+		fmt.Println("[Logpoint Debug] " + time.Now().UTC().String() + ": " + msg)
+	}
 }
 
 func (logpoint *Logpoint) Query(query string, timeRange string, limit int, repos []string, timeoutSeconds int) (*models.QueryRequestResponse, error) {
@@ -139,7 +152,6 @@ func (logpoint *Logpoint) GetRepos() (*models.RepoRequestResponse, error) {
 		return nil, error(err)
 	}
 
-	// fmt.Println(string(body))
 	var response models.RepoRequestResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		return nil, error(err)

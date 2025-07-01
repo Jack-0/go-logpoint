@@ -15,7 +15,7 @@ func main() {
 		panic("Ensure you alter all required variables")
 	}
 
-	lp := logpoint.New(logpointURL, logpointUsername, logpointUserSecret)
+	lp := logpoint.New(logpointURL, logpointUsername, logpointUserSecret, true)
 	a, err := lp.GetRepos()
 	if err != nil {
 		panic(err)
