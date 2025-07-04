@@ -101,7 +101,8 @@ func (logpoint *Logpoint) Query(query string, timeRange string, limit int, repos
 	return getSearchLogs[models.QueryRequestResponse](logpoint, requestData)
 }
 
-func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
+// Used to gather results from a given query. A query generates a searchId used here.
+func (logpoint *Logpoint) QueryResult(searchId string) (*models.SearchResult, error) {
 	// From the api docs:
 	// Retrieve search result logs based on the search_id. The server sends the search result logs in chunks. You need to continue sending the request with the same parameters until you receive a response where final is equal to TRUE. It indicates that you have received all the search result logs.
 	payload := map[string]interface{}{
@@ -111,20 +112,35 @@ func (logpoint *Logpoint) QueryResult(searchId string) ([]interface{}, error) {
 	finished := false
 
 	rows := []interface{}{}
+	var meta models.LogpointSearchResultMetaFields
 	for !finished {
 		time.Sleep(1 * time.Second) // wait 1 second to give logpoint a fighting chance
-		res, err := getSearchLogs[models.SearchRequestResponse](logpoint, payload)
+		res, err := getSearchLogs[models.LogpointSearchResult](logpoint, payload)
 		if err != nil {
 			return nil, error(err)
 		}
 		finished = res.Final || res.TotalPages == 0
 		rows = append(rows, res.Rows...)
 
+		// update meta values
+		meta.Columns = res.Columns
+		meta.Grouping = res.Grouping
+		meta.InterestingFields = res.InterestingFields
+		meta.NumAggregated = res.NumAggregated
+		meta.TimeRange = res.TimeRange
+
 		if !res.Success && !finished {
 			return nil, fmt.Errorf("%s", res.Message)
 		}
+
+		logpoint.LocalDebugLog(fmt.Sprintf("total agg %d", res.NumAggregated))
 	}
-	return rows, nil
+
+	logpoint.LocalDebugLog(fmt.Sprintf("total rows %d", len(rows)))
+	return &models.SearchResult{
+		Rows: rows,
+		Meta: meta,
+	}, nil
 }
 
 func (logpoint *Logpoint) GetRepos() (*models.RepoRequestResponse, error) {

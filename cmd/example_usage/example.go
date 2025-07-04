@@ -49,5 +49,7 @@ func main() {
 	// }
 
 	fmt.Println("🏁 Total items:")
-	fmt.Println(len(qr))
+	fmt.Println(len(qr.Rows))
+	fmt.Println("🏁 Total Number Aggregated:")
+	fmt.Println(qr.Meta.NumAggregated)
 }
